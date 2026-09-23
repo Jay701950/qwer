@@ -23,6 +23,7 @@ const MAX_REQUESTS = Number(process.env.RATE_LIMIT || 60);
 const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || "")
   .split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
 const ALLOW_ANY_DOMAIN = process.env.ALLOW_ANY_DOMAIN === "true";
+const AUTH_HOSTS = ["facebook.com", "facebook.net", "instagram.com", "discord.com", "discordapp.com"];
 const buckets = new Map();
 const dnsCache = new Map();
 const responseCache = new Map();
@@ -145,26 +146,36 @@ function rewriteReference(value, baseUrl) {
   try { return proxyUrl(new URL(raw, baseUrl)); } catch { return value; }
 }
 
+function isAuthHost(url) {
+  return AUTH_HOSTS.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`));
+}
+
 export function rewriteHtml(html, baseUrl) {
   let output = html;
-  // Keep navigation through the proxy, but let static assets use the origin/CDN directly.
-  output = output.replace(/(<a\b[^>]*?\bhref\s*=\s*["'])([^"']+)(["'][^>]*>)/gi,
-    (_m, prefix, value, suffix) => `${prefix}${rewriteReference(value, baseUrl)}${suffix}`);
+  // Compatibility mode: keep navigation, assets, API calls, and OAuth on the proxy origin.
+  output = output.replace(/(<a\b[^>]*?\bhref\s*=\s*["'])([^"']+)(["'])([^>]*>)/gi,
+    (_m, prefix, value, quote, suffix) => {
+      try {
+        const target = new URL(value, baseUrl);
+        const top = isAuthHost(target) ? ' target="_top"' : "";
+        return `${prefix}${proxyUrl(target)}${quote}${top}${suffix}`;
+      } catch { return _m; }
+    });
   output = output.replace(/(\b(?:src|poster|background|cite)\s*=\s*["'])([^"']+)(["'])/gi,
-    (_m, prefix, value, suffix) => `${prefix}${absoluteReference(value, baseUrl)}${suffix}`);
+    (_m, prefix, value, suffix) => `${prefix}${rewriteReference(value, baseUrl)}${suffix}`);
   output = output.replace(/(<link\b[^>]*?\bhref\s*=\s*["'])([^"']+)(["'][^>]*>)/gi,
-    (_m, prefix, value, suffix) => `${prefix}${absoluteReference(value, baseUrl)}${suffix}`);
+    (_m, prefix, value, suffix) => `${prefix}${rewriteReference(value, baseUrl)}${suffix}`);
   output = output.replace(/(<form\b[^>]*?\baction\s*=\s*["'])([^"']+)(["'][^>]*>)/gi,
     (_m, prefix, value, suffix) => `${prefix}${rewriteReference(value, baseUrl)}${suffix}`);
   output = output.replace(/(\bsrcset\s*=\s*["'])([^"']+)(["'])/gi, (_m, prefix, value, suffix) => {
     const rewritten = value.split(",").map((part) => {
       const match = part.trim().match(/^(\S+)(\s+.*)?$/);
-      return match ? `${absoluteReference(match[1], baseUrl)}${match[2] || ""}` : part;
+      return match ? `${rewriteReference(match[1], baseUrl)}${match[2] || ""}` : part;
     }).join(", ");
     return `${prefix}${rewritten}${suffix}`;
   });
   output = output.replace(/url\(\s*(["']?)([^)'"\s]+)\1\s*\)/gi,
-    (_m, quote, value) => `url(${quote}${absoluteReference(value, baseUrl)}${quote})`);
+    (_m, quote, value) => `url(${quote}${rewriteReference(value, baseUrl)}${quote})`);
   output = output.replace(/(<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]+content\s*=\s*["'][^;]+;\s*url=)([^"']+)/gi,
     (_m, prefix, value) => `${prefix}${rewriteReference(value, baseUrl)}`);
   return output;
