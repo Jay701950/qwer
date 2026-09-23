@@ -10,6 +10,7 @@ app.disable("x-powered-by");
 app.set("trust proxy", 1);
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
 app.use(express.json({ limit: "16kb" }));
+app.use(express.raw({ type: "*/*", limit: "2mb" }));
 app.use(express.static("public", { index: "index.html" }));
 
 const PORT = Number(process.env.PORT || 10000);
@@ -184,6 +185,26 @@ function copySafeHeaders(upstream, res) {
   if (setCookie) res.set("set-cookie", setCookie.split(/,(?=[^;]+?=)/).map((cookie) => cookie.replace(/;\s*Domain=[^;]+/gi, "").replace(/;\s*Secure/gi, "")).join(","));
 }
 
+function requestBody(req) {
+  if (req.method === "GET" || req.method === "HEAD") return undefined;
+  if (Buffer.isBuffer(req.body)) return req.body;
+  if (req.body && typeof req.body === "object") return JSON.stringify(req.body);
+  return undefined;
+}
+
+function forwardedHeaders(req) {
+  const headers = {
+    "user-agent": req.get("user-agent") || "Mozilla/5.0 (compatible; RenderSafeProxy/1.0)",
+    accept: req.get("accept") || "*/*",
+    "accept-language": req.get("accept-language") || "en-US,en;q=0.8"
+  };
+  for (const name of ["cookie", "content-type", "referer", "x-csrf-token", "x-requested-with"]) {
+    const value = req.get(name);
+    if (value) headers[name] = value;
+  }
+  return headers;
+}
+
 async function readLimitedBody(response) {
   const length = Number(response.headers.get("content-length") || 0);
   if (length > MAX_BYTES) throw new Error("Upstream response is too large");
@@ -222,20 +243,23 @@ async function proxyRequest(req, res) {
   try {
     let target = await validateTarget(rawUrl);
     let upstream;
+    let method = req.method;
+    let requestPayload = requestBody(req);
     for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
       try {
         upstream = await fetch(target, {
-          method: "GET", redirect: "manual", signal: controller.signal,
+          method, body: requestPayload, redirect: "manual", signal: controller.signal,
           dispatcher: upstreamAgent,
-          headers: { "user-agent": "Mozilla/5.0 (compatible; RenderSafeProxy/1.0)", accept: req.get("accept") || "*/*", "accept-language": req.get("accept-language") || "en-US,en;q=0.8" }
+          headers: forwardedHeaders(req)
         });
       } finally { clearTimeout(timeout); }
       if (![301, 302, 303, 307, 308].includes(upstream.status)) break;
       const location = upstream.headers.get("location");
       if (!location || redirect === MAX_REDIRECTS) throw new Error("Too many or invalid redirects");
       target = await validateTarget(new URL(location, target).toString());
+      if ([301, 302, 303].includes(upstream.status)) { method = "GET"; requestPayload = undefined; }
     }
     const cached = getCachedResponse(target.href);
     if (cached) {
@@ -271,8 +295,8 @@ async function proxyRequest(req, res) {
 
 // Direct/API clients must send the API key. The browser UI uses this same
 // handler through /view, so the secret never needs to be embedded in HTML.
-app.get("/proxy", rateLimit, requireApiKey, proxyRequest);
-app.get("/view", rateLimit, proxyRequest);
+app.all("/proxy", rateLimit, requireApiKey, proxyRequest);
+app.all("/view", rateLimit, proxyRequest);
 
 app.use((_req, res) => res.status(404).json({ error: "Not found" }));
 
