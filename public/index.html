@@ -30,17 +30,26 @@
         <button type="submit">열기</button>
       </form>
     </div>
-    <div class="hint">주소를 입력하면 이 서비스의 프록시 경유로 페이지를 엽니다.</div>
+    <div class="hint">일반 사이트는 프록시로 열고, YouTube·Instagram·Facebook·Discord는 로그인과 속도를 위해 원본으로 새 탭에서 엽니다.</div>
   </header>
   <main><iframe id="browser" title="프록시 페이지" referrerpolicy="no-referrer"></iframe></main>
   <script>
     const form = document.querySelector('#open-form');
     const input = document.querySelector('#url');
     const frame = document.querySelector('#browser');
+    const directHosts = ['youtube.com', 'youtu.be', 'instagram.com', 'facebook.com', 'discord.com', 'discordapp.com'];
+    function isDirectSite(hostname) {
+      const host = hostname.toLowerCase();
+      return directHosts.some((domain) => host === domain || host.endsWith(`.${domain}`));
+    }
     function openUrl(value) {
       const url = new URL(value);
       if (!['http:', 'https:'].includes(url.protocol)) throw new Error('http 또는 https 링크만 사용할 수 있습니다.');
       input.value = url.href;
+      if (isDirectSite(url.hostname)) {
+        window.open(url.href, '_blank', 'noopener,noreferrer');
+        return;
+      }
       frame.src = `/view?url=${encodeURIComponent(url.href)}`;
       history.replaceState(null, '', `/?url=${encodeURIComponent(url.href)}`);
     }
