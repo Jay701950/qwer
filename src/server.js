@@ -183,6 +183,10 @@ function copySafeHeaders(upstream, res) {
   if (location) res.set("location", proxyUrl(location));
   const setCookie = upstream.headers.get("set-cookie");
   if (setCookie) res.set("set-cookie", setCookie.split(/,(?=[^;]+?=)/).map((cookie) => cookie.replace(/;\s*Domain=[^;]+/gi, "").replace(/;\s*Secure/gi, "")).join(","));
+  for (const name of ["content-length", "content-range", "accept-ranges", "etag", "last-modified", "expires"]) {
+    const value = upstream.headers.get(name);
+    if (value) res.set(name, value);
+  }
 }
 
 function requestBody(req) {
@@ -198,7 +202,7 @@ function forwardedHeaders(req) {
     accept: req.get("accept") || "*/*",
     "accept-language": req.get("accept-language") || "en-US,en;q=0.8"
   };
-  for (const name of ["cookie", "content-type", "referer", "x-csrf-token", "x-requested-with"]) {
+  for (const name of ["cookie", "content-type", "referer", "range", "if-range", "if-none-match", "if-modified-since", "x-csrf-token", "x-requested-with"]) {
     const value = req.get(name);
     if (value) headers[name] = value;
   }
@@ -274,7 +278,7 @@ async function proxyRequest(req, res) {
     const isHtml = /^text\/html(?:;|$)/i.test(contentType);
     const isCss = /^text\/css(?:;|$)/i.test(contentType);
     const isStatic = !isHtml && !isCss && upstream.status === 200;
-    if (!isHtml && !isCss && upstream.status === 200 && upstream.body) {
+    if (!isHtml && !isCss && [200, 206].includes(upstream.status) && upstream.body) {
       res.status(upstream.status).set("x-proxy-upstream", target.origin)
         .set("x-proxy-cache", "STREAM").set("cache-control", "public, max-age=120");
       return streamLimitedBody(upstream, res);
