@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web Relay</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #0b1020; color: #e7ecff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    header { padding: 18px 22px; border-bottom: 1px solid #273252; background: #111932; }
+    .bar { max-width: 1400px; margin: auto; display: flex; gap: 10px; align-items: center; }
+    h1 { font-size: 16px; margin: 0 16px 0 0; white-space: nowrap; letter-spacing: .02em; }
+    form { display: flex; gap: 8px; flex: 1; }
+    input { min-width: 0; flex: 1; border: 1px solid #3a4b78; background: #080d1c; color: #fff; border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+    button { border: 0; border-radius: 8px; padding: 0 18px; color: #fff; background: #526dff; font-weight: 700; cursor: pointer; }
+    button:hover { background: #6980ff; }
+    main { width: 100%; height: 100%; padding: 14px; }
+    iframe { width: 100%; height: 100%; min-height: calc(100vh - 100px); border: 1px solid #273252; border-radius: 10px; background: white; }
+    .hint { color: #9da8cb; font-size: 12px; margin: 8px auto 0; max-width: 1400px; }
+    @media (max-width: 650px) { header { padding: 12px; } .bar { display: block; } h1 { margin-bottom: 10px; } form { height: 42px; } main { padding: 8px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <h1>Web Relay</h1>
+      <form id="open-form">
+        <input id="url" type="url" autocomplete="off" placeholder="https://example.com" required>
+        <button type="submit">열기</button>
+      </form>
+    </div>
+    <div class="hint">주소를 입력하면 이 서비스의 프록시 경유로 페이지를 엽니다.</div>
+  </header>
+  <main><iframe id="browser" title="프록시 페이지" referrerpolicy="no-referrer"></iframe></main>
+  <script>
+    const form = document.querySelector('#open-form');
+    const input = document.querySelector('#url');
+    const frame = document.querySelector('#browser');
+    function openUrl(value) {
+      const url = new URL(value);
+      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('http 또는 https 링크만 사용할 수 있습니다.');
+      input.value = url.href;
+      frame.src = `/view?url=${encodeURIComponent(url.href)}`;
+      history.replaceState(null, '', `/?url=${encodeURIComponent(url.href)}`);
+    }
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      try { openUrl(input.value.trim()); } catch (error) { alert(error.message); }
+    });
+    const initial = new URLSearchParams(location.search).get('url');
+    if (initial) { try { openUrl(initial); } catch (_) {} }
+  </script>
+</body>
+</html>
