@@ -101,15 +101,15 @@ func (a *App) browse(w http.ResponseWriter, r *http.Request) {
 	// Keep allocator cleanup through the browser context lifecycle.
 	_ = cancel
 
-	if err := chromedp.Run(bctx, chromedp.Navigate(u.String())); err != nil {
-		bcancel()
-		http.Error(w, "Chromium 시작 실패: "+err.Error(), 502)
-		return
-	}
 	b := &Browser{ctx: bctx, cancel: bcancel, profile: profile}
 	a.mu.Lock()
 	a.browsers[id] = b
 	a.mu.Unlock()
+	go func() {
+		navCtx, navCancel := context.WithTimeout(bctx, 45*time.Second)
+		defer navCancel()
+		_ = chromedp.Run(navCtx, chromedp.Navigate(u.String()))
+	}()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, strings.Replace(viewer, "__SESSION__", id, 1))
 }
