@@ -100,6 +100,14 @@ func (a *App) browse(w http.ResponseWriter, r *http.Request) {
 	bctx, bcancel := chromedp.NewContext(ctx)
 	// Keep allocator cleanup through the browser context lifecycle.
 	_ = cancel
+	bootCtx, bootCancel := context.WithTimeout(bctx, 15*time.Second)
+	if err := chromedp.Run(bootCtx, chromedp.Navigate("about:blank")); err != nil {
+		bootCancel()
+		bcancel()
+		http.Error(w, "Chromium 시작 실패: "+err.Error(), 502)
+		return
+	}
+	bootCancel()
 
 	b := &Browser{ctx: bctx, cancel: bcancel, profile: profile}
 	a.mu.Lock()
