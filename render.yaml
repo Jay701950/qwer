@@ -1,25 +1,12 @@
 services:
   - type: web
-    name: safe-proxy
-    runtime: node
+    name: fast-browser-relay
+    runtime: docker
     plan: free
-    buildCommand: npm ci
-    startCommand: npm start
-    healthCheckPath: /health
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PROXY_API_KEY
-        generateValue: true
-      - key: ALLOWED_DOMAINS
-        value: ""
-      - key: ALLOW_ANY_DOMAIN
-        value: "true"
-      - key: RATE_LIMIT
-        value: "30"
-      - key: MAX_RESPONSE_BYTES
-        value: "5242880"
-      - key: REQUEST_TIMEOUT_MS
-        value: "15000"
-      - key: MAX_REDIRECTS
-        value: "3"
+      - key: PORT
+        value: "8080"
+      - key: PROFILE_DIR
+        value: "/tmp/profiles"
