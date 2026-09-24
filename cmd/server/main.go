@@ -69,15 +69,23 @@ func main() {
 
 func (a *App) home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, `<!doctype html><html lang="ko"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Browser Proxy</title><style>body{font-family:system-ui;background:#0b0d10;color:#fff;padding:8vh 16px}
-main{max-width:800px;margin:auto;background:#151920;border:1px solid #28303a;border-radius:20px;padding:25px}
-form{display:flex;gap:8px}input,button{font:inherit;padding:14px;border-radius:12px;border:1px solid #39414c}
-input{flex:1;background:#0d1015;color:#fff}button{cursor:pointer}@media(max-width:600px){form{flex-direction:column}button{width:100%}}
-small{color:#9ba5b3}</style><main><h1>Chromium Browser Proxy</h1>
-<small>링크를 입력하면 서버 Chromium에서 열립니다.</small><form action="/browse">
-<input name="url" type="url" placeholder="https://www.youtube.com" required><button>열기</button></form>
-<p>YouTube · Discord · Instagram</p></main></html>`)
+	fmt.Fprint(w, `<!doctype html><html lang="ko"><head><meta name="viewport" content="width=device-width,initial-scale=1">
+	<meta name="theme-color" content="#090d18"><title>Relay Browser</title><style>
+	:root{font-family:Inter,system-ui,-apple-system,sans-serif;color:#eef2ff;background:#090d18}
+	*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 20% 0,#233b72 0,transparent 38%),#090d18}
+	main{width:min(680px,100%);padding:clamp(24px,6vw,52px);border:1px solid #2a3a62;border-radius:28px;background:#10182bdb;box-shadow:0 24px 80px #0008}
+	.logo{display:inline-flex;align-items:center;gap:9px;color:#9eb5ff;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+	.logo i{width:10px;height:10px;border-radius:50%;background:#6d8cff;box-shadow:0 0 18px #6d8cff}
+	h1{font-size:clamp(30px,7vw,52px);line-height:1.02;margin:18px 0 12px;letter-spacing:-.05em}p{color:#aab6d3;line-height:1.6;margin:0 0 25px}
+	form{display:flex;gap:10px}input,button{font:inherit;border-radius:13px;padding:14px 16px;border:1px solid #3b4f7d}input{min-width:0;flex:1;color:#fff;background:#080d19;outline:none}input:focus{border-color:#8aa3ff;box-shadow:0 0 0 3px #718dff22}button{color:#fff;background:#5b78ff;font-weight:750;cursor:pointer;white-space:nowrap}button:hover{background:#708aff}
+	.quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.quick button{padding:9px 12px;font-size:13px;background:#172441;border-color:#304674;color:#cbd7ff}.quick button:hover{background:#22345d}
+	.note{margin-top:28px;padding-top:18px;border-top:1px solid #263555;font-size:12px;color:#8090b4}.note b{color:#b9c7eb}@media(max-width:540px){body{padding:12px}main{border-radius:22px;padding:25px 20px}form{display:grid;grid-template-columns:1fr}form button{width:100%}}
+	</style></head><body><main><div class="logo"><i></i> Relay Browser</div><h1>웹을 바로 열어보세요.</h1>
+	<p>입력한 링크를 서버의 Chromium에서 실행합니다. 로그인과 동적 페이지를 지원하는 원격 브라우저입니다.</p>
+	<form action="/browse"><input id="url" name="url" type="url" inputmode="url" autocomplete="url" placeholder="https://www.youtube.com" required><button type="submit">열기</button></form>
+	<div class="quick"><button type="button" onclick="openSite('https://www.youtube.com')">YouTube</button><button type="button" onclick="openSite('https://www.instagram.com')">Instagram</button><button type="button" onclick="openSite('https://discord.com/app')">Discord</button><button type="button" onclick="openSite('https://www.facebook.com')">Facebook</button></div>
+	<div class="note"><b>지원 안내</b><br>화면은 JPEG 스트리밍으로 전달됩니다. 첫 실행은 Chromium을 시작하느라 조금 느릴 수 있습니다.</div>
+	<script>function openSite(u){document.getElementById('url').value=u;document.querySelector('form').submit()}</script></main></body></html>`)
 }
 
 func (a *App) browse(w http.ResponseWriter, r *http.Request) {
