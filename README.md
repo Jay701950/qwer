@@ -6,6 +6,21 @@
 
 최상위의 `render.yaml`을 Render **New > Blueprint**로 연결하면 Docker 이미지가 빌드됩니다. 서버는 Render가 제공하는 `PORT`를 자동으로 사용하고 `/healthz`를 상태 확인 경로로 제공합니다. 프로필은 `/tmp/profiles`에 저장되므로 재배포나 인스턴스 교체 시 로그인 상태가 사라질 수 있습니다.
 
+## Android Termux 실행
+
+Android에서 서버를 직접 실행하려면 Termux와 Chromium이 필요합니다. Termux에서 다음을 실행합니다.
+
+```bash
+pkg update -y
+pkg install -y git
+git clone https://github.com/Jay701950/qwer.git browser-relay
+cd browser-relay
+bash android/install-termux.sh
+bash android/start-termux.sh
+```
+
+같은 휴대폰에서 사용할 때는 `http://127.0.0.1:8080`을 열고, 같은 Wi-Fi의 다른 기기에서 사용할 때는 휴대폰의 사설 IP와 포트 `8080`을 사용합니다. 화면이 꺼지면 Android 절전 정책으로 서버가 멈출 수 있으므로 Termux를 배터리 최적화에서 제외해야 합니다.
+
 ## 들어간 것
 - Go control server
 - Chromium persistent profile

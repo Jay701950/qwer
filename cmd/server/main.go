@@ -96,6 +96,12 @@ func (a *App) browse(w http.ResponseWriter, r *http.Request) {
 		chromedp.Flag("no-default-browser-check", true),
 		chromedp.Flag("autoplay-policy", "no-user-gesture-required"),
 		chromedp.UserDataDir(profile), chromedp.WindowSize(1280, 800))
+	if chrome := os.Getenv("CHROME_BIN"); chrome != "" {
+		opts = append(opts, chromedp.ExecPath(chrome))
+	}
+	if os.Getenv("TERMUX") == "1" {
+		opts = append(opts, chromedp.Flag("no-sandbox", true))
+	}
 	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	bctx, bcancel := chromedp.NewContext(ctx)
 	// Keep allocator cleanup through the browser context lifecycle.
